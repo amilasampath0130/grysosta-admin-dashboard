@@ -23,8 +23,8 @@ const navItems = [
   { name: 'Dashboard', href: '/admin', icon: Home },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Vendors', href: '/admin/vendors', icon: Store },
-  { name: 'Requirements', href: '/admin/requirements', icon: FileText },
-  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  // { name: 'Requirements', href: '/admin/requirements', icon: FileText },
+  // { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 

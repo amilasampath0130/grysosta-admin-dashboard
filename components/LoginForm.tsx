@@ -9,27 +9,36 @@ const LoginForm = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("http://localhost:5000/api/auth/admin/login", {
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/auth/admin/login",
+      {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ email, password }),
-      });
-        const data = await response.json();
-        if (data.success) {
-            router.replace("/dashboard");
-        } else {
-            setError(data.message || "Invalid credentials");
-        }
-    } catch (error) {
-      console.error("Login error:", error);
-      setError("Something went wrong");
+        body: JSON.stringify({ email, password })
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+      // 🔐 STORE JWT
+      localStorage.setItem("token", data.token);
+
+      router.replace("/admin");
+    } else {
+      setError(data.message || "Invalid credentials");
     }
-  };
+  } catch (error) {
+    console.error("Login error:", error);
+    setError("Something went wrong");
+  }
+};
+
 
   return (
     <div className="grid place-items-center h-screen">
