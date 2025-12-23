@@ -27,7 +27,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
     if (data.success) {
       // 🔐 STORE JWT
-      localStorage.setItem("token", data.token);
+      localStorage.setItem("token", data.data.token);
 
       router.replace("/admin");
     } else {
