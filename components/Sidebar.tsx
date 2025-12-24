@@ -49,7 +49,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         {/* Header */}
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-green-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-blue-400 flex items-center justify-center">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -78,7 +78,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                   ${
                     isActive
-                      ? 'bg-green-400 text-white'
+                      ? 'bg-blue-400 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
               >
@@ -92,7 +92,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         {/* Footer */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-            <div className="w-8 h-8 rounded-full bg-green-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center">
               <span className="text-white font-semibold">A</span>
             </div>
             <div>

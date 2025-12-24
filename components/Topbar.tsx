@@ -60,7 +60,7 @@ export default function Header({ setOpen }: HeaderProps) {
               type="text"
               placeholder="Search users, vendors, requirements..."
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300
-              focus:outline-none focus:ring-2 focus:ring-green-400"
+              focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -77,7 +77,7 @@ export default function Header({ setOpen }: HeaderProps) {
           {/* AVATAR */}
           <button
             onClick={() => setOpenMenu(!openMenu)}
-            className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center"
           >
             <span className="text-white font-semibold">
               {user?.email?.[0]?.toUpperCase() || 'A'}
