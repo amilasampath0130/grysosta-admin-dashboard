@@ -1,20 +1,20 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Sidebar from '@/components/Sidebar'
-import Header from '@/components/Topbar'
-import AdminGuard from '@/components/ProtectedAdminLayout'
-import useAutoLogout from '@/hooks/useAutoLogout'
+import { useState } from "react";
+import Sidebar from "@/components/UI/Sidebar";
+import Header from "@/components/UI/Topbar";
+import AdminGuard from "@/components/ProtectedAdminLayout";
+import useAutoLogout from "@/hooks/useAutoLogout";
 
 export default function AdminLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   // 🔐 MUST be here (top-level)
-  useAutoLogout()
+  useAutoLogout();
 
   return (
     <AdminGuard>
@@ -29,5 +29,5 @@ export default function AdminLayout({
         </div>
       </div>
     </AdminGuard>
-  )
+  );
 }

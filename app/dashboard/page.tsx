@@ -1,4 +1,4 @@
-import Admininfor from "@/components/Admininfor"
+import Admininfor from "@/components/auth/Admininfor"
 
 
 const Dashboard = () => {
