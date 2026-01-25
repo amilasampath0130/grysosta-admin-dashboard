@@ -29,14 +29,14 @@ export default function UserTable() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/users",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users`,
         {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        }
+            "Content-Type": "application/json",
+          },
+        },
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -70,7 +70,7 @@ export default function UserTable() {
     new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
-      day: "numeric"
+      day: "numeric",
     });
 
   if (loading) {
@@ -103,7 +103,7 @@ export default function UserTable() {
               "Mobile",
               "Role",
               "Last Login",
-              "Created At"
+              "Created At",
             ].map((h) => (
               <th
                 key={h}
@@ -140,8 +140,8 @@ export default function UserTable() {
                         user.role === "admin"
                           ? "bg-purple-100 text-purple-800"
                           : user.role === "user"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
                       }`}
                   >
                     {user.role}

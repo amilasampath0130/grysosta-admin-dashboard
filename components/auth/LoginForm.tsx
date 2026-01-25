@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -11,6 +11,23 @@ const LoginForm = () => {
 
   const router = useRouter();
 
+  useEffect(() => {
+    try {
+      const hasCookieToken = !!document.cookie
+        .split("; ")
+        .find((c) => c.trim().startsWith("token="));
+
+      const hasLocalToken =
+        typeof localStorage !== "undefined" && !!localStorage.getItem("token");
+
+      if (hasCookieToken || hasLocalToken) {
+        router.replace("/admin");
+      }
+    } catch (err) {
+      // ignore - document.cookie may be unavailable in some environments
+    }
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -18,12 +35,12 @@ const LoginForm = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/admin/login",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        }
+          body: JSON.stringify({ email, password }),
+        },
       );
 
       const data = await response.json();

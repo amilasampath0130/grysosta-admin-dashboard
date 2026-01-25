@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-const AUTO_LOGOUT_TIME = 60 * 1000 // 1 minute
+const AUTO_LOGOUT_TIME = 5 * 60 * 1000 // 5 minutes
 
 export default function useAutoLogout() {
   const router = useRouter()

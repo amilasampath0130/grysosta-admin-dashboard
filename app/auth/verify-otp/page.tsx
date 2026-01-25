@@ -22,12 +22,12 @@ export default function VerifyOtpPage() {
 
     try {
       const res = await fetch(
-        "http://localhost:5000/api/admin/verify-otp",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/verify-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp })
-        }
+          body: JSON.stringify({ email, otp }),
+        },
       );
 
       const data = await res.json();

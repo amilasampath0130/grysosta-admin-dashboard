@@ -1,9 +1,10 @@
+import VendorManagement from '@/components/auth/VendorManagement'
 import React from 'react'
 
 const page = () => {
   return (
     <div>
-      <h1>Your vendor here</h1>
+      <VendorManagement />
     </div>
   )
 }
