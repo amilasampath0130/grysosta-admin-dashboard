@@ -17,6 +17,11 @@ export default function UserTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const getAuthHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem("token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -66,6 +71,35 @@ export default function UserTable() {
     fetchUsers();
   }, []);
 
+  const handleDelete = async (userId: string) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this user? This action cannot be undone.",
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+        },
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        setUsers((prev) => prev.filter((u) => u._id !== userId));
+      } else {
+        alert(data.message || "Failed to delete user");
+      }
+    } catch (err) {
+      alert("Failed to delete user. Please try again.");
+    }
+  };
+
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -104,6 +138,7 @@ export default function UserTable() {
               "Role",
               "Last Login",
               "Created At",
+              "Actions",
             ].map((h) => (
               <th
                 key={h}
@@ -117,7 +152,7 @@ export default function UserTable() {
         <tbody className="bg-white divide-y divide-gray-200">
           {users.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+              <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                 No users found
               </td>
             </tr>
@@ -152,6 +187,20 @@ export default function UserTable() {
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {formatDate(user.createdAt)}
+                </td>
+                <td className="px-6 py-4 text-sm">
+                  <button
+                    onClick={() => handleDelete(user._id)}
+                    className="text-red-600 hover:text-red-700"
+                    disabled={user.role === "admin"}
+                    title={
+                      user.role === "admin"
+                        ? "Cannot delete admin"
+                        : "Delete user"
+                    }
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))

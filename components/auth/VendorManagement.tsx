@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 
+/* ================= TYPES ================= */
+
 interface Vendor {
   _id: string;
   name: string;
   email: string;
   vendorInfo?: {
-    businessName: string;
-    ownerName: string;
-    phone: string;
-    address: string;
+    businessName?: string;
+    ownerName?: string;
+    phone?: string;
+    address?: string;
   };
   createdAt: string;
 }
@@ -22,30 +24,37 @@ interface Admin {
   createdAt: string;
 }
 
-const VendorManagement = () => {
-  const [pendingVendors, setPendingVendors] = useState<Vendor[]>([]);
-  const [approvedVendors, setApprovedVendors] = useState<Vendor[]>([]);
+type Tab = "pending" | "approved" | "admins";
+
+/* ================= COMPONENT ================= */
+
+export default function VendorManagement() {
+  const [pending, setPending] = useState<Vendor[]>([]);
+  const [approved, setApproved] = useState<Vendor[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
-  const [activeTab, setActiveTab] = useState<"pending" | "approved" | "admins">(
-    "pending",
-  );
+  const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getAuthHeaders = (): Record<string, string> => {
-    const token =
-      typeof localStorage !== "undefined"
-        ? localStorage.getItem("token")
-        : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  /* ---------- Auth Headers (FIXED TS ISSUE) ---------- */
+  const getAuthHeaders = (): Headers => {
+    const headers = new Headers();
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
+    return headers;
   };
 
-  const fetchVendors = async () => {
+  /* ---------- Fetch ---------- */
+  const fetchAll = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const headers = getAuthHeaders();
-      const [pendingRes, approvedRes, adminsRes] = await Promise.all([
+
+      const [p, a, ad] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/pending`, {
           headers,
         }),
@@ -57,178 +66,237 @@ const VendorManagement = () => {
         }),
       ]);
 
-      const pendingData = await pendingRes.json();
-      const approvedData = await approvedRes.json();
-      const adminsData = await adminsRes.json();
+      const [pd, ap, adm] = await Promise.all([p.json(), a.json(), ad.json()]);
 
-      if (pendingData.success) setPendingVendors(pendingData.vendors || []);
-      if (approvedData.success) setApprovedVendors(approvedData.vendors || []);
-      if (adminsData.success) setAdmins(adminsData.admins || []);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to load data. Please try again.");
+      setPending(pd.vendors ?? []);
+      setApproved(ap.vendors ?? []);
+      setAdmins(adm.admins ?? []);
+    } catch {
+      setError("Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVendors();
+    fetchAll();
   }, []);
 
-  const handleApprove = async (vendorId: string) => {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/approve/${vendorId}`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
-        alert("Vendor approved successfully!");
-        fetchVendors(); // Refresh lists
-      } else {
-        alert(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Error approving vendor:", error);
-      alert("Failed to approve vendor. Please try again.");
-    }
+  /* ---------- Actions ---------- */
+  const approveVendor = async (id: string) => {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/approve/${id}`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    fetchAll();
   };
 
-  const handleReject = async (vendorId: string) => {
-    const reason = prompt("Reason for rejection:");
+  const rejectVendor = async (id: string) => {
+    const reason = prompt("Reason for rejection");
     if (!reason) return;
 
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/reject/${vendorId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify({ reason }),
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
-        alert("Vendor rejected successfully!");
-        fetchVendors(); // Refresh lists
-      } else {
-        alert(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Error rejecting vendor:", error);
-      alert("Failed to reject vendor. Please try again.");
-    }
+    const headers = getAuthHeaders();
+    headers.set("Content-Type", "application/json");
+
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/reject/${id}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ reason }),
+    });
+    fetchAll();
   };
 
+  const deleteVendor = async (id: string) => {
+    if (!confirm("Delete this vendor permanently?")) return;
+
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/vendors/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    fetchAll();
+  };
+
+  /* ---------- Helpers ---------- */
+  const formatDate = (date: string) => {
+    const d = new Date(date);
+    return isNaN(d.getTime())
+      ? "—"
+      : d.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+  };
+
+  /* ================= RENDER ================= */
+
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">User & Vendor Management</h1>
 
-      <div className="mb-4">
-        <button
-          onClick={() => setActiveTab("pending")}
-          className={`px-4 py-2 mr-2 rounded ${activeTab === "pending" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-        >
-          Pending Vendors ({pendingVendors.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("approved")}
-          className={`px-4 py-2 mr-2 rounded ${activeTab === "approved" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-        >
-          Approved Vendors ({approvedVendors.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("admins")}
-          className={`px-4 py-2 rounded ${activeTab === "admins" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-        >
-          Admin Users ({admins.length})
-        </button>
+      {/* Tabs */}
+      <div className="flex gap-6 border-b mb-6">
+        {[
+          { key: "pending", label: "Pending", count: pending.length },
+          { key: "approved", label: "Approved", count: approved.length },
+          { key: "admins", label: "Admins", count: admins.length },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key as Tab)}
+            className={`pb-3 font-medium border-b-2 transition ${
+              activeTab === t.key
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {t.label}
+            <span className="ml-2 text-xs bg-gray-200 px-2 py-0.5 rounded-full">
+              {t.count}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-          <button
-            onClick={fetchVendors}
-            className="ml-2 underline hover:no-underline"
-          >
-            Retry
-          </button>
-        </div>
+      {/* States */}
+      {loading && (
+        <div className="py-10 text-center text-gray-500">Loading...</div>
       )}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2">Loading...</span>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {activeTab === "pending"
-            ? pendingVendors.map((vendor) => (
-                <div key={vendor._id} className="border p-4 rounded shadow">
-                  <h3 className="font-bold">{vendor.name}</h3>
-                  <p>Email: {vendor.email}</p>
-                  {vendor.vendorInfo && (
-                    <div className="mt-2">
-                      <p>Business: {vendor.vendorInfo.businessName}</p>
-                      <p>Owner: {vendor.vendorInfo.ownerName}</p>
-                      <p>Phone: {vendor.vendorInfo.phone}</p>
-                      <p>Address: {vendor.vendorInfo.address}</p>
-                    </div>
-                  )}
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => handleApprove(vendor._id)}
-                      className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(vendor._id)}
-                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))
-            : activeTab === "approved"
-              ? approvedVendors.map((vendor) => (
-                  <div key={vendor._id} className="border p-4 rounded shadow">
-                    <h3 className="font-bold">{vendor.name}</h3>
-                    <p>Email: {vendor.email}</p>
-                    {vendor.vendorInfo && (
-                      <div className="mt-2">
-                        <p>Business: {vendor.vendorInfo.businessName}</p>
-                        <p>Owner: {vendor.vendorInfo.ownerName}</p>
-                        <p>Phone: {vendor.vendorInfo.phone}</p>
-                        <p>Address: {vendor.vendorInfo.address}</p>
-                      </div>
-                    )}
-                  </div>
-                ))
-              : admins.map((admin) => (
-                  <div key={admin._id} className="border p-4 rounded shadow">
-                    <h3 className="font-bold">{admin.name}</h3>
-                    <p>Email: {admin.email}</p>
-                    <p className="text-sm text-gray-600">Role: Administrator</p>
-                    <p className="text-sm text-gray-600">
-                      Joined: {new Date(admin.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
-        </div>
+      {error && (
+        <div className="mb-4 bg-red-100 text-red-700 p-4 rounded">{error}</div>
       )}
+
+      {/* Content */}
+      <div className="grid gap-4">
+        {/* Pending */}
+        {activeTab === "pending" &&
+          pending.map((v) => (
+            <VendorCard
+              key={v._id}
+              vendor={v}
+              status="pending"
+              onApprove={approveVendor}
+              onReject={rejectVendor}
+              onDelete={deleteVendor}
+              formatDate={formatDate}
+            />
+          ))}
+
+        {/* Approved */}
+        {activeTab === "approved" &&
+          approved.map((v) => (
+            <VendorCard
+              key={v._id}
+              vendor={v}
+              status="approved"
+              onDelete={deleteVendor}
+              formatDate={formatDate}
+            />
+          ))}
+
+        {/* Admins */}
+        {activeTab === "admins" &&
+          admins.map((a) => (
+            <div
+              key={a._id}
+              className="bg-white border rounded-xl p-4 shadow-sm"
+            >
+              <h3 className="font-semibold text-lg">{a.name}</h3>
+              <p className="text-gray-600">{a.email}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Joined {formatDate(a.createdAt)}
+              </p>
+            </div>
+          ))}
+      </div>
     </div>
   );
-};
+}
 
-export default VendorManagement;
+/* ================= CARD ================= */
+
+function VendorCard({
+  vendor,
+  status,
+  onApprove,
+  onReject,
+  onDelete,
+  formatDate,
+}: {
+  vendor: Vendor;
+  status: "pending" | "approved";
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
+  onDelete: (id: string) => void;
+  formatDate: (d: string) => string;
+}) {
+  return (
+    <div className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition">
+      <div className="flex justify-between">
+        <div>
+          <h3 className="font-semibold text-lg">
+            {vendor.vendorInfo?.ownerName || vendor.name}
+          </h3>
+          <p className="text-gray-600">{vendor.email}</p>
+        </div>
+
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            status === "pending"
+              ? "bg-yellow-100 text-yellow-700"
+              : "bg-green-100 text-green-700"
+          }`}
+        >
+          {status}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+        <div>
+          <span className="text-gray-500">Business</span>
+          <p>{vendor.vendorInfo?.businessName || "—"}</p>
+        </div>
+        <div>
+          <span className="text-gray-500">Phone</span>
+          <p>{vendor.vendorInfo?.phone || "—"}</p>
+        </div>
+        <div className="col-span-2">
+          <span className="text-gray-500">Address</span>
+          <p>{vendor.vendorInfo?.address || "—"}</p>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center mti mt-4">
+        <span className="text-xs text-gray-500">
+          Created {formatDate(vendor.createdAt)}
+        </span>
+
+        <div className="flex gap-2">
+          {status === "pending" && (
+            <>
+              <button
+                onClick={() => onApprove?.(vendor._id)}
+                className="px-3 py-1 text-sm rounded bg-green-500 text-white hover:bg-green-600"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => onReject?.(vendor._id)}
+                className="px-3 py-1 text-sm rounded bg-red-500 text-white hover:bg-red-600"
+              >
+                Reject
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => onDelete(vendor._id)}
+            className="px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
