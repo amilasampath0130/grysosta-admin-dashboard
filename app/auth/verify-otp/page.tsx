@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
@@ -11,6 +11,19 @@ export default function VerifyOtpPage() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldownSeconds((current) => (current > 0 ? current - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   if (!email) {
     return <p className="text-center mt-10">Invalid request</p>;
@@ -26,6 +39,7 @@ export default function VerifyOtpPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email, otp }),
         },
       );
@@ -39,10 +53,49 @@ export default function VerifyOtpPage() {
       } else {
         setError(data.message || "Invalid OTP");
       }
-    } catch (err) {
+    } catch {
       setError("Server error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!email || resendLoading || cooldownSeconds > 0) return;
+
+    setResendLoading(true);
+    setError("");
+    setResendMessage("");
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/resend-otp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        setResendMessage(data.message || "OTP resent successfully");
+        setCooldownSeconds(60);
+        return;
+      }
+
+      if (res.status === 429) {
+        const secondsLeft = Math.max(1, Math.ceil((Number(data.msLeft) || 0) / 1000));
+        setCooldownSeconds(secondsLeft);
+      }
+
+      setError(data.message || "Failed to resend OTP");
+    } catch {
+      setError("Failed to resend OTP");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -71,9 +124,27 @@ export default function VerifyOtpPage() {
           {loading ? "Verifying..." : "Verify"}
         </button>
 
+        <button
+          onClick={handleResendOtp}
+          disabled={resendLoading || cooldownSeconds > 0}
+          className="mt-3 border border-blue-500 text-blue-600 w-full py-2 rounded font-semibold disabled:opacity-60"
+        >
+          {resendLoading
+            ? "Resending..."
+            : cooldownSeconds > 0
+              ? `Resend OTP in ${cooldownSeconds}s`
+              : "Resend OTP"}
+        </button>
+
         {error && (
           <p className="bg-red-500 text-white text-sm p-2 rounded mt-3">
             {error}
+          </p>
+        )}
+
+        {resendMessage && (
+          <p className="bg-green-500 text-white text-sm p-2 rounded mt-3">
+            {resendMessage}
           </p>
         )}
       </div>

@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Users,
   Store,
@@ -10,26 +10,26 @@ import {
   BarChart3,
   Home,
   Shield,
-  X
-} from 'lucide-react'
-import { Dispatch, SetStateAction } from 'react'
+  X,
+} from "lucide-react";
+import { Dispatch, SetStateAction } from "react";
 
 interface SidebarProps {
-  open: boolean
-  setOpen: Dispatch<SetStateAction<boolean>>
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const navItems = [
-  { name: 'Dashboard', href: '/admin', icon: Home },
-  { name: 'Users', href: '/admin/users', icon: Users },
-  { name: 'Vendors', href: '/admin/vendors', icon: Store },
-  // { name: 'Requirements', href: '/admin/requirements', icon: FileText },
+  { name: "Dashboard", href: "/admin", icon: Home },
+  { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Vendors", href: "/admin/vendors", icon: Store },
+  { name: "Advertisements", href: "/admin/advertisements", icon: FileText },
   // { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
-]
+  { name: "Settings", href: "/admin/settings", icon: Settings },
+];
 
 export default function Sidebar({ open, setOpen }: SidebarProps) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <>
@@ -44,7 +44,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
       <aside
         className={`fixed md:static z-50 h-full w-64 bg-white border-r border-gray-200
         transition-transform duration-300
-        ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* Header */}
         <div className="p-6 flex items-center justify-between">
@@ -66,9 +66,9 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 px-4 space-y-2">
           {navItems.map((item) => {
-            const Icon = item.icon
+            const Icon = item.icon;
             const isActive =
-              pathname === item.href || pathname.startsWith(item.href + '/')
+              pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
               <Link
@@ -78,14 +78,14 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                   ${
                     isActive
-                      ? 'bg-blue-400 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? "bg-blue-400 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
                   }`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
-            )
+            );
           })}
         </nav>
 
@@ -103,5 +103,5 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         </div>
       </aside>
     </>
-  )
+  );
 }

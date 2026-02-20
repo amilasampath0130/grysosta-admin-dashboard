@@ -3,6 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
+type JwtPayload = {
+  role?: string;
+  exp?: number;
+};
+
+const parseJwtPayload = (token: string): JwtPayload | null => {
+  try {
+    const [, payloadPart] = token.split(".");
+    if (!payloadPart) return null;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized);
+    return JSON.parse(decoded) as JwtPayload;
+  } catch {
+    return null;
+  }
+};
+
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,20 +29,25 @@ const LoginForm = () => {
   const router = useRouter();
 
   useEffect(() => {
-    try {
-      const hasCookieToken = !!document.cookie
-        .split("; ")
-        .find((c) => c.trim().startsWith("token="));
+    const token =
+      typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
 
-      const hasLocalToken =
-        typeof localStorage !== "undefined" && !!localStorage.getItem("token");
-
-      if (hasCookieToken || hasLocalToken) {
-        router.replace("/admin");
-      }
-    } catch (err) {
-      // ignore - document.cookie may be unavailable in some environments
+    if (!token) {
+      return;
     }
+
+    const payload = parseJwtPayload(token);
+    if (!payload || payload.role !== "admin") {
+      localStorage.removeItem("token");
+      return;
+    }
+
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      localStorage.removeItem("token");
+      return;
+    }
+
+    router.replace("/admin");
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -39,6 +61,7 @@ const LoginForm = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email, password }),
         },
       );
@@ -51,7 +74,7 @@ const LoginForm = () => {
       } else {
         setError(data.message || "Invalid credentials");
       }
-    } catch (error) {
+    } catch {
       setError("Something went wrong");
     } finally {
       setLoading(false);
