@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type PendingAdvertisement = {
   _id: string;
@@ -185,7 +186,16 @@ export default function AdvertisementManagement() {
                 <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
                   <p>
                     <span className="font-medium">Vendor:</span>{" "}
-                    {ad.vendor?.name || "-"} ({ad.vendor?.email || "-"})
+                    {ad.vendor?._id ? (
+                      <Link
+                        href={`/admin/vendors/${ad.vendor._id}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {ad.vendor?.name || "-"} ({ad.vendor?.email || "-"})
+                      </Link>
+                    ) : (
+                      `${ad.vendor?.name || "-"} (${ad.vendor?.email || "-"})`
+                    )}
                   </p>
                   <p>
                     <span className="font-medium">Business:</span>{" "}

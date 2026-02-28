@@ -51,6 +51,20 @@ type Vendor = {
   createdAt?: string;
 };
 
+type Advertisement = {
+  _id: string;
+  title: string;
+  content: string;
+  advertisementType: "banner" | "sidebar" | "popup";
+  startDate: string;
+  endDate: string;
+  imageUrl: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "STOPPED";
+  reviewNote?: string;
+  stopNote?: string;
+  createdAt: string;
+};
+
 const getAuthHeaders = (): Headers => {
   const headers = new Headers();
   if (typeof window !== "undefined") {
@@ -69,14 +83,29 @@ const Row = ({ label, value }: { label: string; value?: string }) => (
   </div>
 );
 
+const formatDate = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? "—" : date.toLocaleDateString();
+};
+
+const statusClassMap: Record<Advertisement["status"], string> = {
+  PENDING: "bg-yellow-100 text-yellow-700",
+  APPROVED: "bg-emerald-100 text-emerald-700",
+  REJECTED: "bg-red-100 text-red-700",
+  STOPPED: "bg-gray-100 text-gray-700",
+};
+
 export default function VendorApplicationDetails() {
   const router = useRouter();
   const params = useParams<{ vendorId: string }>();
   const vendorId = params?.vendorId;
 
   const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busyAdId, setBusyAdId] = useState<string | null>(null);
 
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -87,17 +116,37 @@ export default function VendorApplicationDetails() {
       setError(null);
 
       try {
-        const res = await fetch(
-          `${apiBase}/api/vendor/application/${encodeURIComponent(vendorId)}`,
-          { headers: getAuthHeaders() },
-        );
-        const data = await res.json();
+        const headers = getAuthHeaders();
+        const [vendorRes, adsRes] = await Promise.all([
+          fetch(
+            `${apiBase}/api/vendor/application/${encodeURIComponent(vendorId)}`,
+            { headers },
+          ),
+          fetch(
+            `${apiBase}/api/advertisements/by-vendor/${encodeURIComponent(vendorId)}`,
+            { headers },
+          ),
+        ]);
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || "Failed to load vendor application");
+        const [vendorData, adsData] = await Promise.all([
+          vendorRes.json(),
+          adsRes.json(),
+        ]);
+
+        if (!vendorRes.ok || !vendorData.success) {
+          throw new Error(
+            vendorData.message || "Failed to load vendor application",
+          );
         }
 
-        setVendor(data.vendor as Vendor);
+        if (!adsRes.ok || !adsData.success) {
+          throw new Error(
+            adsData.message || "Failed to load vendor advertisements",
+          );
+        }
+
+        setVendor(vendorData.vendor as Vendor);
+        setAds((adsData.advertisements || []) as Advertisement[]);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load vendor application");
       } finally {
@@ -107,6 +156,114 @@ export default function VendorApplicationDetails() {
 
     run();
   }, [apiBase, vendorId]);
+
+  const refreshAds = async () => {
+    if (!vendorId) return;
+    try {
+      const res = await fetch(
+        `${apiBase}/api/advertisements/by-vendor/${encodeURIComponent(vendorId)}`,
+        { headers: getAuthHeaders() },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to load vendor advertisements");
+      }
+      setAds((data.advertisements || []) as Advertisement[]);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to load vendor advertisements",
+      );
+    }
+  };
+
+  const deleteAd = async (advertisementId: string) => {
+    if (!confirm("Delete this advertisement permanently?")) return;
+    setBusyAdId(advertisementId);
+    setError(null);
+    try {
+      const res = await fetch(
+        `${apiBase}/api/advertisements/${encodeURIComponent(advertisementId)}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to delete advertisement");
+      }
+      await refreshAds();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to delete advertisement",
+      );
+    } finally {
+      setBusyAdId(null);
+    }
+  };
+
+  const stopAd = async (advertisementId: string) => {
+    const reason =
+      window.prompt("Reason for stopping this advertisement? (optional)")?.trim() ||
+      "";
+
+    setBusyAdId(advertisementId);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      headers.set("Content-Type", "application/json");
+
+      const res = await fetch(
+        `${apiBase}/api/advertisements/stop/${encodeURIComponent(advertisementId)}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ reason }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to stop advertisement");
+      }
+      await refreshAds();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to stop advertisement");
+    } finally {
+      setBusyAdId(null);
+    }
+  };
+
+  const informVendor = async (advertisementId: string) => {
+    const message =
+      window.prompt("Message to vendor about this advertisement")?.trim() || "";
+    if (!message) return;
+
+    setBusyAdId(advertisementId);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      headers.set("Content-Type", "application/json");
+
+      const res = await fetch(
+        `${apiBase}/api/advertisements/inform/${encodeURIComponent(advertisementId)}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ message }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to inform vendor");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to inform vendor");
+    } finally {
+      setBusyAdId(null);
+    }
+  };
 
   const application = vendor?.vendorApplication;
   const personal = application?.personal;
@@ -211,6 +368,110 @@ export default function VendorApplicationDetails() {
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="bg-white border rounded-xl p-5">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h2 className="font-semibold text-lg">Advertisements</h2>
+                <p className="text-sm text-gray-600">
+                  All advertisements submitted by this vendor.
+                </p>
+              </div>
+            </div>
+
+            {ads.length === 0 ? (
+              <div className="text-sm text-gray-600">
+                No advertisements submitted.
+              </div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {ads.map((ad) => (
+                  <div
+                    key={ad._id}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+                  >
+                    <img
+                      src={ad.imageUrl}
+                      alt={ad.title}
+                      className="h-44 w-full object-cover"
+                      loading="lazy"
+                    />
+
+                    <div className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {ad.title}
+                        </h3>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassMap[ad.status]}`}
+                        >
+                          {ad.status}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-gray-700">{ad.content}</p>
+
+                      <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700 space-y-1">
+                        <p>
+                          <span className="font-medium">Type:</span>{" "}
+                          {ad.advertisementType}
+                        </p>
+                        <p>
+                          <span className="font-medium">Schedule:</span>{" "}
+                          {formatDate(ad.startDate)} — {formatDate(ad.endDate)}
+                        </p>
+                        <p>
+                          <span className="font-medium">Submitted:</span>{" "}
+                          {formatDate(ad.createdAt)}
+                        </p>
+                        {ad.status === "REJECTED" && ad.reviewNote && (
+                          <p className="text-red-700">
+                            <span className="font-medium">Rejection:</span>{" "}
+                            {ad.reviewNote}
+                          </p>
+                        )}
+                        {ad.status === "STOPPED" && ad.stopNote && (
+                          <p>
+                            <span className="font-medium">Stopped:</span>{" "}
+                            {ad.stopNote}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => informVendor(ad._id)}
+                          disabled={busyAdId === ad._id}
+                          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Inform
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => stopAd(ad._id)}
+                          disabled={busyAdId === ad._id || ad.status === "STOPPED"}
+                          className="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Stop
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteAd(ad._id)}
+                          disabled={busyAdId === ad._id}
+                          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

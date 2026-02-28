@@ -237,9 +237,13 @@ function VendorCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <div className="font-semibold text-gray-900 truncate">
+            <Link
+              href={`/admin/vendors/${vendor._id}`}
+              className="font-semibold text-gray-900 truncate hover:underline"
+              title="View vendor advertisements"
+            >
               {vendor.vendorInfo?.ownerName || vendor.name}
-            </div>
+            </Link>
             <div className="text-sm text-gray-600 truncate">{vendor.email}</div>
             <div className="text-xs text-gray-500">{formatDate(vendor.createdAt)}</div>
           </div>
