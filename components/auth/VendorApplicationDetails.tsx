@@ -29,6 +29,7 @@ type VendorApplication = {
   documents?: {
     userIdImageUrl?: string;
     businessRegImageUrl?: string;
+    logoUrl?: string;
   };
   submittedAt?: string;
 };
@@ -331,7 +332,7 @@ export default function VendorApplicationDetails() {
           <div className="bg-white border rounded-xl p-5">
             <h2 className="font-semibold text-lg mb-3">Documents</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <div className="text-sm text-gray-500 mb-2">Government ID</div>
                 {docs?.userIdImageUrl ? (
@@ -359,6 +360,22 @@ export default function VendorApplicationDetails() {
                     <img
                       src={docs.businessRegImageUrl}
                       alt="Business registration"
+                      className="w-full h-64 rounded border object-cover"
+                      loading="lazy"
+                    />
+                  </a>
+                ) : (
+                  <div className="text-gray-500">—</div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-sm text-gray-500 mb-2">Vendor Logo (1080×1080)</div>
+                {docs?.logoUrl ? (
+                  <a href={docs.logoUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={docs.logoUrl}
+                      alt="Vendor logo"
                       className="w-full h-64 rounded border object-cover"
                       loading="lazy"
                     />
