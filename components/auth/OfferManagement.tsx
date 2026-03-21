@@ -3,17 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-type Advertisement = {
+type Offer = {
   _id: string;
   title: string;
-  content: string;
-  advertisementType: "banner" | "sidebar" | "popup";
+  description: string;
+  offerType: "bogo" | "percentage" | "flat";
+  discountValue: number;
   imageUrl: string;
+  validUntil: string;
   createdAt: string;
-  startDate?: string;
-  endDate?: string;
-  approvedAt?: string;
-  status?: "PENDING" | "APPROVED" | "REJECTED" | "STOPPED";
+  status?: "PENDING" | "APPROVED" | "REJECTED";
   vendor?: {
     _id?: string;
     name?: string;
@@ -33,24 +32,24 @@ const getAuthHeaders = (): Headers => {
   return headers;
 };
 
-export default function AdvertisementManagement() {
-  const [activeAds, setActiveAds] = useState<Advertisement[]>([]);
-  const [pendingAds, setPendingAds] = useState<Advertisement[]>([]);
+export default function OfferManagement() {
+  const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
+  const [pendingOffers, setPendingOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const fetchAds = async () => {
+  const fetchOffers = async () => {
     setLoading(true);
     setError(null);
 
     try {
       const headers = getAuthHeaders();
       const [activeRes, pendingRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/active`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/offers/active`, {
           headers,
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/pending`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/offers/pending`, {
           headers,
         }),
       ]);
@@ -59,24 +58,20 @@ export default function AdvertisementManagement() {
       const pendingData = await pendingRes.json();
 
       if (!activeRes.ok) {
-        throw new Error(
-          activeData?.message || "Failed to load active advertisements",
-        );
+        throw new Error(activeData?.message || "Failed to load active offers");
       }
 
       if (!pendingRes.ok) {
-        throw new Error(
-          pendingData?.message || "Failed to load pending advertisements",
-        );
+        throw new Error(pendingData?.message || "Failed to load pending offers");
       }
 
-      setActiveAds(activeData.advertisements || []);
-      setPendingAds(pendingData.advertisements || []);
+      setActiveOffers(activeData.offers || []);
+      setPendingOffers(pendingData.offers || []);
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
           ? fetchError.message
-          : "Failed to load advertisements",
+          : "Failed to load offers",
       );
     } finally {
       setLoading(false);
@@ -84,16 +79,16 @@ export default function AdvertisementManagement() {
   };
 
   useEffect(() => {
-    fetchAds();
+    fetchOffers();
   }, []);
 
-  const approveAd = async (id: string) => {
+  const approve = async (id: string) => {
     setActiveId(id);
     setError(null);
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/approve/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/offers/approve/${id}`,
         {
           method: "POST",
           headers: getAuthHeaders(),
@@ -102,22 +97,20 @@ export default function AdvertisementManagement() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to approve advertisement");
+        throw new Error(data?.message || "Failed to approve offer");
       }
 
-      await fetchAds();
+      await fetchOffers();
     } catch (approveError) {
       setError(
-        approveError instanceof Error
-          ? approveError.message
-          : "Failed to approve advertisement",
+        approveError instanceof Error ? approveError.message : "Failed to approve offer",
       );
     } finally {
       setActiveId(null);
     }
   };
 
-  const rejectAd = async (id: string) => {
+  const reject = async (id: string) => {
     const reason = window.prompt("Enter rejection reason")?.trim() || "";
     if (!reason) return;
 
@@ -129,7 +122,7 @@ export default function AdvertisementManagement() {
       headers.set("Content-Type", "application/json");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/reject/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/offers/reject/${id}`,
         {
           method: "POST",
           headers,
@@ -139,84 +132,41 @@ export default function AdvertisementManagement() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to reject advertisement");
+        throw new Error(data?.message || "Failed to reject offer");
       }
 
-      await fetchAds();
+      await fetchOffers();
     } catch (rejectError) {
       setError(
-        rejectError instanceof Error
-          ? rejectError.message
-          : "Failed to reject advertisement",
+        rejectError instanceof Error ? rejectError.message : "Failed to reject offer",
       );
     } finally {
       setActiveId(null);
     }
   };
 
-  const stopAd = async (id: string) => {
-    const reason = window.prompt("Reason for stopping? (optional)")?.trim() || "";
-
-    setActiveId(id);
-    setError(null);
-
-    try {
-      const headers = getAuthHeaders();
-      headers.set("Content-Type", "application/json");
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/stop/${id}`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ reason }),
-        },
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Failed to stop advertisement");
-      }
-
-      await fetchAds();
-    } catch (stopError) {
-      setError(
-        stopError instanceof Error
-          ? stopError.message
-          : "Failed to stop advertisement",
-      );
-    } finally {
-      setActiveId(null);
-    }
-  };
-
-  const deleteAd = async (id: string) => {
-    const confirmed = window.confirm("Delete this advertisement?");
+  const deleteOffer = async (id: string) => {
+    const confirmed = window.confirm("Delete this offer?");
     if (!confirmed) return;
 
     setActiveId(id);
     setError(null);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${id}`,
-        {
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/offers/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to delete advertisement");
+        throw new Error(data?.message || "Failed to delete offer");
       }
 
-      await fetchAds();
+      await fetchOffers();
     } catch (deleteError) {
       setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Failed to delete advertisement",
+        deleteError instanceof Error ? deleteError.message : "Failed to delete offer",
       );
     } finally {
       setActiveId(null);
@@ -226,8 +176,10 @@ export default function AdvertisementManagement() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Advertisements</h1>
-        <p className="text-sm text-gray-600">Manage active and pending ads.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Offers</h1>
+        <p className="text-sm text-gray-600">
+          Manage active and pending vendor offers.
+        </p>
       </div>
 
       {error && (
@@ -238,102 +190,83 @@ export default function AdvertisementManagement() {
 
       <div className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Active Advertisements
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900">Active Offers</h2>
           <p className="text-sm text-gray-600">
-            Approved ads that are currently within their date range.
+            Approved offers that have not expired.
           </p>
         </div>
 
         {loading ? (
           <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600">
-            Loading active advertisements...
+            Loading active offers...
           </div>
-        ) : activeAds.length === 0 ? (
+        ) : activeOffers.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600">
-            No active advertisements.
+            No active offers.
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {activeAds.map((ad) => (
+            {activeOffers.map((offer) => (
               <div
-                key={ad._id}
+                key={offer._id}
                 className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
               >
                 <img
-                  src={ad.imageUrl}
-                  alt={ad.title}
+                  src={offer.imageUrl}
+                  alt={offer.title}
                   className="h-48 w-full object-cover"
                 />
 
                 <div className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {ad.title}
+                      {offer.title}
                     </h3>
                     <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                       APPROVED
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-700">{ad.content}</p>
+                  <p className="text-sm text-gray-700">{offer.description}</p>
 
                   <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
                     <p>
                       <span className="font-medium">Vendor:</span>{" "}
-                      {ad.vendor?._id ? (
+                      {offer.vendor?._id ? (
                         <Link
-                          href={`/admin/vendors/${ad.vendor._id}`}
+                          href={`/admin/vendors/${offer.vendor._id}`}
                           className="text-blue-600 hover:underline"
                         >
-                          {ad.vendor?.name || "-"} ({ad.vendor?.email || "-"})
+                          {offer.vendor?.name || "-"} ({offer.vendor?.email || "-"})
                         </Link>
                       ) : (
-                        `${ad.vendor?.name || "-"} (${ad.vendor?.email || "-"})`
+                        `${offer.vendor?.name || "-"} (${offer.vendor?.email || "-"})`
                       )}
                     </p>
                     <p>
                       <span className="font-medium">Business:</span>{" "}
-                      {ad.vendor?.vendorInfo?.businessName || "-"}
+                      {offer.vendor?.vendorInfo?.businessName || "-"}
                     </p>
                     <p>
-                      <span className="font-medium">Type:</span>{" "}
-                      {ad.advertisementType}
+                      <span className="font-medium">Type:</span> {offer.offerType}
                     </p>
                     <p>
-                      <span className="font-medium">Start:</span>{" "}
-                      {ad.startDate
-                        ? new Date(ad.startDate).toLocaleDateString()
-                        : "-"}
-                    </p>
-                    <p>
-                      <span className="font-medium">End:</span>{" "}
-                      {ad.endDate
-                        ? new Date(ad.endDate).toLocaleDateString()
-                        : "-"}
+                      <span className="font-medium">Valid until:</span>{" "}
+                      {new Date(offer.validUntil).toLocaleDateString()}
                     </p>
                     <p>
                       <span className="font-medium">Created:</span>{" "}
-                      {new Date(ad.createdAt).toLocaleDateString()}
+                      {new Date(offer.createdAt).toLocaleDateString()}
                     </p>
                   </div>
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => stopAd(ad._id)}
-                      disabled={activeId === ad._id}
-                      className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {activeId === ad._id ? "Processing..." : "Stop"}
-                    </button>
-
-                    <button
-                      onClick={() => deleteAd(ad._id)}
-                      disabled={activeId === ad._id}
+                      onClick={() => deleteOffer(offer._id)}
+                      disabled={activeId === offer._id}
                       className="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Delete
+                      {activeId === offer._id ? "Processing..." : "Delete"}
                     </button>
                   </div>
                 </div>
@@ -345,100 +278,97 @@ export default function AdvertisementManagement() {
 
       <div className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Pending Advertisements
-          </h2>
-          <p className="text-sm text-gray-600">Ads waiting for review.</p>
+          <h2 className="text-lg font-semibold text-gray-900">Pending Offers</h2>
+          <p className="text-sm text-gray-600">Offers waiting for review.</p>
         </div>
 
         {loading ? (
           <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600">
-            Loading pending advertisements...
+            Loading pending offers...
           </div>
-        ) : pendingAds.length === 0 ? (
+        ) : pendingOffers.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600">
-            No pending advertisements.
+            No pending offers.
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {pendingAds.map((ad) => (
+            {pendingOffers.map((offer) => (
               <div
-                key={ad._id}
+                key={offer._id}
                 className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
               >
                 <img
-                  src={ad.imageUrl}
-                  alt={ad.title}
+                  src={offer.imageUrl}
+                  alt={offer.title}
                   className="h-48 w-full object-cover"
                 />
 
                 <div className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {ad.title}
+                      {offer.title}
                     </h3>
                     <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-700">
                       PENDING
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-700">{ad.content}</p>
+                  <p className="text-sm text-gray-700">{offer.description}</p>
 
                   <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
                     <p>
                       <span className="font-medium">Vendor:</span>{" "}
-                      {ad.vendor?._id ? (
+                      {offer.vendor?._id ? (
                         <Link
-                          href={`/admin/vendors/${ad.vendor._id}`}
+                          href={`/admin/vendors/${offer.vendor._id}`}
                           className="text-blue-600 hover:underline"
                         >
-                          {ad.vendor?.name || "-"} ({ad.vendor?.email || "-"})
+                          {offer.vendor?.name || "-"} ({offer.vendor?.email || "-"})
                         </Link>
                       ) : (
-                        `${ad.vendor?.name || "-"} (${ad.vendor?.email || "-"})`
+                        `${offer.vendor?.name || "-"} (${offer.vendor?.email || "-"})`
                       )}
                     </p>
                     <p>
                       <span className="font-medium">Business:</span>{" "}
-                      {ad.vendor?.vendorInfo?.businessName || "-"}
+                      {offer.vendor?.vendorInfo?.businessName || "-"}
                     </p>
                     <p>
-                      <span className="font-medium">Type:</span>{" "}
-                      {ad.advertisementType}
+                      <span className="font-medium">Type:</span> {offer.offerType}
                     </p>
                     <p>
-                      <span className="font-medium">Start:</span>{" "}
-                      {ad.startDate
-                        ? new Date(ad.startDate).toLocaleDateString()
-                        : "-"}
-                    </p>
-                    <p>
-                      <span className="font-medium">End:</span>{" "}
-                      {ad.endDate
-                        ? new Date(ad.endDate).toLocaleDateString()
-                        : "-"}
+                      <span className="font-medium">Valid until:</span>{" "}
+                      {new Date(offer.validUntil).toLocaleDateString()}
                     </p>
                     <p>
                       <span className="font-medium">Created:</span>{" "}
-                      {new Date(ad.createdAt).toLocaleDateString()}
+                      {new Date(offer.createdAt).toLocaleDateString()}
                     </p>
                   </div>
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => approveAd(ad._id)}
-                      disabled={activeId === ad._id}
+                      onClick={() => approve(offer._id)}
+                      disabled={activeId === offer._id}
                       className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {activeId === ad._id ? "Processing..." : "Approve"}
+                      {activeId === offer._id ? "Processing..." : "Approve"}
                     </button>
 
                     <button
-                      onClick={() => rejectAd(ad._id)}
-                      disabled={activeId === ad._id}
+                      onClick={() => reject(offer._id)}
+                      disabled={activeId === offer._id}
                       className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Reject
+                    </button>
+
+                    <button
+                      onClick={() => deleteOffer(offer._id)}
+                      disabled={activeId === offer._id}
+                      className="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>
