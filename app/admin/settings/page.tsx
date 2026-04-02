@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type PlanKey = "bronze" | "silver" | "gold";
+type PlanKey = "bronze" | "silver" | "gold" | "diamond";
 
 type AdminPlan = {
   key: PlanKey;
@@ -10,6 +10,12 @@ type AdminPlan = {
   currency: string;
   priceCents: number;
   active: boolean;
+  summary: string;
+  features: string[];
+  limits: {
+    activeOfferLimit: number | null;
+    advertisementLimit: number | null;
+  };
 };
 
 type PlansResponse = {
@@ -140,7 +146,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-sm text-gray-600">
-          Update monthly subscription plan prices.
+          Update monthly subscription plan prices and review plan limits.
         </p>
       </div>
 
@@ -168,6 +174,7 @@ export default function SettingsPage() {
                 <tr>
                   <th className="px-5 py-3 font-medium">Plan</th>
                   <th className="px-5 py-3 font-medium">Current price</th>
+                  <th className="px-5 py-3 font-medium">Limits</th>
                   <th className="px-5 py-3 font-medium">New price (USD)</th>
                   <th className="px-5 py-3 font-medium">Action</th>
                 </tr>
@@ -185,6 +192,9 @@ export default function SettingsPage() {
                     </td>
                     <td className="px-5 py-3 text-gray-700">
                       {formatMoney(plan.priceCents, plan.currency)} / month
+                    </td>
+                    <td className="px-5 py-3 text-xs text-gray-600">
+                      Offers: {plan.limits.activeOfferLimit ?? "Unlimited"} · Ads: {plan.limits.advertisementLimit ?? "Unlimited"}
                     </td>
                     <td className="px-5 py-3">
                       <input
