@@ -20,6 +20,16 @@ const parseJwtPayload = (token: string): JwtPayload | null => {
   }
 };
 
+const buildVerifyOtpUrl = (email: string, notice?: string) => {
+  const params = new URLSearchParams({ email });
+
+  if (notice) {
+    params.set("notice", notice);
+  }
+
+  return `/auth/verify-otp?${params.toString()}`;
+};
+
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +62,8 @@ const LoginForm = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
     setError("");
 
@@ -66,14 +78,28 @@ const LoginForm = () => {
         },
       );
 
-      const data = await response.json();
+      let data: { success?: boolean; message?: string } | null = null;
+
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Invalid server response");
+      }
 
       if (data.success) {
-        // ✅ Redirect to OTP page
-        router.push(`/auth/verify-otp?email=${email}`);
-      } else {
-        setError(data.message || "Invalid credentials");
+        router.push(buildVerifyOtpUrl(email));
+        return;
       }
+
+      if (
+        response.status === 429 &&
+        data?.message?.toLowerCase().includes("otp already sent")
+      ) {
+        router.push(buildVerifyOtpUrl(email, data.message));
+        return;
+      }
+
+      setError(data?.message || "Invalid credentials");
     } catch {
       setError("Something went wrong");
     } finally {

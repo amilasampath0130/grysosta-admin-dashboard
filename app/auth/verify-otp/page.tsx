@@ -7,23 +7,61 @@ function VerifyOtpInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
+  const notice = searchParams.get("notice") || "";
 
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [cooldownMs, setCooldownMs] = useState(0);
 
   useEffect(() => {
-    if (cooldownSeconds <= 0) return;
+    let mounted = true;
+
+    const fetchOtpStatus = async () => {
+      if (!email) return;
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/otp-status?email=${encodeURIComponent(email)}`,
+          {
+            credentials: "include",
+          },
+        );
+
+        const data = await response.json();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (typeof data?.msLeft === "number") {
+          setCooldownMs(data.msLeft);
+        }
+      } catch {
+        // Ignore status failures and let resend endpoint remain the source of truth.
+      }
+    };
+
+    fetchOtpStatus();
+    const intervalId = setInterval(fetchOtpStatus, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, [email]);
+
+  useEffect(() => {
+    if (cooldownMs <= 0) return;
 
     const timer = setInterval(() => {
-      setCooldownSeconds((current) => (current > 0 ? current - 1 : 0));
+      setCooldownMs((current) => Math.max(0, current - 1000));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [cooldownSeconds]);
+  }, [cooldownMs]);
 
   if (!email) {
     return <p className="text-center mt-10">Invalid request</p>;
@@ -61,7 +99,7 @@ function VerifyOtpInner() {
   };
 
   const handleResendOtp = async () => {
-    if (!email || resendLoading || cooldownSeconds > 0) return;
+    if (!email || resendLoading || cooldownMs > 0) return;
 
     setResendLoading(true);
     setError("");
@@ -82,13 +120,12 @@ function VerifyOtpInner() {
 
       if (data.success) {
         setResendMessage(data.message || "OTP resent successfully");
-        setCooldownSeconds(60);
+        setCooldownMs(60 * 1000);
         return;
       }
 
       if (res.status === 429) {
-        const secondsLeft = Math.max(1, Math.ceil((Number(data.msLeft) || 0) / 1000));
-        setCooldownSeconds(secondsLeft);
+        setCooldownMs(Math.max(1000, Number(data.msLeft) || 0));
       }
 
       setError(data.message || "Failed to resend OTP");
@@ -126,15 +163,21 @@ function VerifyOtpInner() {
 
         <button
           onClick={handleResendOtp}
-          disabled={resendLoading || cooldownSeconds > 0}
+          disabled={resendLoading || cooldownMs > 0}
           className="mt-3 border border-blue-500 text-blue-600 w-full py-2 rounded font-semibold disabled:opacity-60"
         >
           {resendLoading
             ? "Resending..."
-            : cooldownSeconds > 0
-              ? `Resend OTP in ${cooldownSeconds}s`
+            : cooldownMs > 0
+              ? `Resend OTP in ${Math.ceil(cooldownMs / 1000)}s`
               : "Resend OTP"}
         </button>
+
+        {notice && !error && !resendMessage && (
+          <p className="bg-blue-500 text-white text-sm p-2 rounded mt-3">
+            {notice}
+          </p>
+        )}
 
         {error && (
           <p className="bg-red-500 text-white text-sm p-2 rounded mt-3">
