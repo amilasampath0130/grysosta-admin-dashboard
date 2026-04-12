@@ -2,6 +2,13 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { ApiResponse, parseJsonResponse } from "@/lib/api";
+
+type VerifyAdminOtpData = {
+  token?: string;
+};
+
+type VerifyAdminOtpResponse = ApiResponse<VerifyAdminOtpData>;
 
 function VerifyOtpInner() {
   const router = useRouter();
@@ -30,7 +37,7 @@ function VerifyOtpInner() {
           },
         );
 
-        const data = await response.json();
+        const data = await parseJsonResponse<ApiResponse>(response);
 
         if (!mounted) {
           return;
@@ -82,14 +89,14 @@ function VerifyOtpInner() {
         },
       );
 
-      const data = await res.json();
+      const data = await parseJsonResponse<VerifyAdminOtpResponse>(res);
 
-      if (data.success) {
+      if (res.ok && data?.success && data?.data?.token) {
         // 🔐 Store JWT
         localStorage.setItem("token", data.data.token);
         router.replace("/admin");
       } else {
-        setError(data.message || "Invalid OTP");
+        setError(data?.message || "Invalid OTP");
       }
     } catch {
       setError("Server error");
@@ -116,19 +123,21 @@ function VerifyOtpInner() {
         },
       );
 
-      const data = await res.json();
+      const data = await parseJsonResponse<ApiResponse>(res);
 
-      if (data.success) {
-        setResendMessage(data.message || "OTP resent successfully");
-        setCooldownMs(60 * 1000);
+      if (res.ok && data?.success) {
+        setResendMessage(data?.message || "OTP resent successfully");
+        setCooldownMs(
+          typeof data?.msLeft === "number" ? data.msLeft : 30 * 1000,
+        );
         return;
       }
 
-      if (res.status === 429) {
-        setCooldownMs(Math.max(1000, Number(data.msLeft) || 0));
+      if (res.status === 429 && typeof data?.msLeft === "number") {
+        setCooldownMs(Math.max(1000, data.msLeft));
       }
 
-      setError(data.message || "Failed to resend OTP");
+      setError(data?.message || "Failed to resend OTP");
     } catch {
       setError("Failed to resend OTP");
     } finally {

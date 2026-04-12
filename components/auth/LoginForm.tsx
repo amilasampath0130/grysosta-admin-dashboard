@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { ApiResponse, parseJsonResponse } from "@/lib/api";
 
 type JwtPayload = {
   role?: string;
@@ -29,6 +30,8 @@ const buildVerifyOtpUrl = (email: string, notice?: string) => {
 
   return `/auth/verify-otp?${params.toString()}`;
 };
+
+type LoginResponse = ApiResponse;
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -78,15 +81,9 @@ const LoginForm = () => {
         },
       );
 
-      let data: { success?: boolean; message?: string } | null = null;
+      const data = await parseJsonResponse<LoginResponse>(response);
 
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error("Invalid server response");
-      }
-
-      if (data.success) {
+      if (response.ok && data?.success) {
         router.push(buildVerifyOtpUrl(email));
         return;
       }
@@ -100,8 +97,8 @@ const LoginForm = () => {
       }
 
       setError(data?.message || "Invalid credentials");
-    } catch {
-      setError("Something went wrong");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
