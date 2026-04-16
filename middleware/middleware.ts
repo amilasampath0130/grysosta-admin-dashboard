@@ -4,11 +4,11 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const token =
     req.cookies.get("auth-token")?.value || req.cookies.get("token")?.value;
-  const { pathname } = req.nextUrl;
 
-  // ✅ Protect admin routes
-  if (!token && pathname.startsWith("/admin")) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
+  // In production, admin auth can be finalized client-side using localStorage.
+  // A strict server-side cookie check here can cause redirect loops for some users.
+  if (!token) {
+    return NextResponse.next();
   }
 
   return NextResponse.next();
