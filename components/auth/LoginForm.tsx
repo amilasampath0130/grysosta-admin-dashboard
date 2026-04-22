@@ -36,6 +36,7 @@ type LoginResponse = ApiResponse;
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -118,13 +119,22 @@ const LoginForm = () => {
             className="border py-2 px-4 rounded"
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            onChange={(e) => setPassword(e.target.value)}
-            className="border py-2 px-4 rounded"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              required
+              onChange={(e) => setPassword(e.target.value)}
+              className="border py-2 px-4 rounded w-full pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+              className="absolute inset-y-0 right-0 px-3 text-sm text-blue-600"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <button
             disabled={loading}
