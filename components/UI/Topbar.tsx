@@ -1,7 +1,7 @@
 'use client'
 
 import { Search, Bell, Menu, LogOut } from 'lucide-react'
-import { useState, Dispatch, SetStateAction, useEffect } from 'react'
+import { useState, Dispatch, SetStateAction } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface HeaderProps {
@@ -13,28 +13,29 @@ interface UserInfo {
   role: string
 }
 
+const getInitialUser = (): UserInfo | null => {
+  if (typeof window === 'undefined') return null
+
+  const token = localStorage.getItem('token')
+  if (!token) return null
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return {
+      email: payload.email ?? 'admin',
+      role: payload.role,
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function Header({ setOpen }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenu, setOpenMenu] = useState(false)
-  const [user, setUser] = useState<UserInfo | null>(null)
+  const [user] = useState<UserInfo | null>(() => getInitialUser())
 
   const router = useRouter()
-
-  // 🔐 Read user from JWT
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      setUser({
-        email: payload.email ?? 'admin',
-        role: payload.role,
-      })
-    } catch {
-      setUser(null)
-    }
-  }, [])
 
   // 🚪 Logout
   const logout = () => {
