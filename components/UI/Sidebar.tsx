@@ -7,10 +7,10 @@ import {
   Store,
   FileText,
   Settings,
-  BarChart3,
   Home,
   Shield,
   X,
+  Coins,
 } from "lucide-react";
 import { Dispatch, SetStateAction } from "react";
 
@@ -25,7 +25,7 @@ const navItems = [
   { name: "Vendors", href: "/admin/vendors", icon: Store },
   { name: "Offers", href: "/admin/offers", icon: FileText },
   { name: "Advertisements", href: "/admin/advertisements", icon: FileText },
-  // { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: "Coins", href: "/admin/coins", icon: Coins },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
